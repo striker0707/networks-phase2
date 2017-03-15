@@ -52,7 +52,7 @@ double negexpdist(double rate)
 {
 	double u;
 	u = (rand() / (RAND_MAX + 1.0)); //drand48() not happy in visual studio, this equation models drand48()
-	return ((-1.0 / rate)*log(1.0 - u));
+	return (ceil(((-1.0 / rate)*log(1.0 - u))*100000)); //working in units of 0.01ms
 }
 
 double negexpdistPKT(double rate)
@@ -71,6 +71,11 @@ double negexpdistPKT(double rate)
 int target(int numservers)
 {
 	return (rand() % numservers); 	// return range of 1 to number of hosts
+}
+
+int freezetime()
+{
+	return (rand() % 5 + 1); 	// arbitrary random countdown range (eg 1-5)
 }
 
 bool sortByArrive(event* lhs, event* rhs) 
@@ -112,6 +117,8 @@ int main()
 	//vector of vectors, with each list representing a server
 	vector< vector<event*> > SERV;
 
+	vector<int> freezetimer; //list of freeze timers while waiting for acks
+	vector<int> isfrozen (NUMSERV, 0); //maintain frozen status if waiting for ack
 	vector<int> backoff; //list of backoff counts per server
 	vector<int> attempts; //list of send attempts per server
 
@@ -129,7 +136,7 @@ int main()
 	for (int k = 0; k<NUMSERV; k++)
 	{
 		vector<event*> HOSTNUM; //empty row
-		for (int i = 0;i<10;i++)
+		for (int i = 0;i<26000;i++)
 		{
 			if (i == 0)
 			{
@@ -141,6 +148,11 @@ int main()
 			}
 
 			curEvent->target = target(NUMSERV);
+
+			//prevent server from targeting itself -- DANGEROUS because prevents 1 server testing to debug, comment out to debug 1 server
+			while (curEvent->target == k)
+				curEvent->target = target(NUMSERV);
+
 			curEvent->pktsize = negexpdistPKT(lambda);
 
 			generator = curEvent;
@@ -153,11 +165,13 @@ int main()
 	} //end NUMSERV for
 	
 	//LOOP WILL START HERE TO SIMULATE PROCESS
+
 	for (int iterations = 0; iterations < 100000; iterations++)
 	{
 		//generate departure times of heads and find earliest (min) packet ready to go
 		double mindepart = 0;
 		int mindepartindex = 0;
+		char typecheck;
 		event* minpacket = new event();
 
 		for (int k = 0; k < NUMSERV; k++)
@@ -175,15 +189,20 @@ int main()
 					mindepart = SERV[k][0]->depart;
 					mindepartindex = k;
 					minpacket = SERV[k][0];
-				
 				}
 			}
 		}
 
-		
-
-
 		GEL[iterations] = minpacket; //move the packet that is processing into GEL
+
+		//DEBUG
+		cout << "iteration: " << iterations << endl;
+		for(int z=0; z<SERV[0].size(); z++)
+		{
+			cout << SERV[0][z]->arrival<< " " << SERV[0][z]->type << SERV[0][z]->depart << endl;
+		}
+
+
 
 		if (SERV[mindepartindex].size() != 0)
 		{
@@ -195,30 +214,40 @@ int main()
 			SERV[mindepartindex][0]->depart = SERV[mindepartindex][0]->arrival + negexpdist(mew); //generate processing time for new head
 		}
 
+		
+	
+
 		//calculate time in link generate the ack packet if not an ack
 		if (minpacket->type == 's')
 		{
 			linktime = (minpacket->pktsize * 8) / (11 * 10 ^ 6);
 			ACK = new event(minpacket->depart + linktime + DIFS, 0, 'a', mindepartindex); // create ack packet
 			ACKset = ACK;
-			SERV[minpacket->target].push_back(ACKset);//put ack packet into target host
-			sort(SERV[minpacket->target].begin(),SERV[minpacket->target].end(), sortByArrive);//sort the ack into the host
+			
+			//SERV[minpacket->target].push_back(ACKset);//put ack packet into target host
+			//sort(SERV[minpacket->target].begin(),SERV[minpacket->target].end(), sortByArrive);//sort the ack into the host
+
+			//find index to insert
+			int searchminindex = 0;
+			double searchmin = ACKset->arrival;
+
+			while (searchmin > SERV[minpacket->target][searchminindex]->arrival)
+			{
+					searchminindex = searchminindex++;
+			}
+			//insert faster than sort
+
+			SERV[minpacket->target].insert(SERV[minpacket->target].begin() + searchminindex, ACKset);
+
 		}
 		else //ack packet - no need to generate ack packet
 		{
 			linktime = (64 * 8) / (11 * 10 ^ 6);
 		}
 		
-		//DEBUG
-		cout << "iteration: " << iterations << endl;
-		for(int z=0; z<SERV[0].size(); z++)
-		{
-			cout << SERV[0][z]->arrival<< " " << SERV[0][z]->type <<endl;
-		}
-	
+		
 
 		//still need to:
-		//target cant send itself
 		//see if time in link delays anyone
 		//freeze when waiting for ack
 		//count resend attempts
@@ -226,7 +255,9 @@ int main()
 		//clock
 
 
-	} //end of iterations for loop/simulation
+	} //end of iterations for setting up GEL
+
+
 
 	system("pause");
 	return 0;
