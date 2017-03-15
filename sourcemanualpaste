@@ -70,7 +70,7 @@ double negexpdistPKT(double rate)
 
 int target(int numservers)
 {
-	return (rand() % numservers + 1); 	// return range of 1 to number of hosts
+	return (rand() % numservers); 	// return range of 1 to number of hosts
 }
 
 bool sortByDepart(event* lhs, event* rhs) 
@@ -92,6 +92,7 @@ int main()
 	double SIFS = 0.00005;
 
 	event* curEvent = new event();
+	event* generator = new event ();
 	event* previousEvent = new event();
 	event* ACK = new event();
 	event* ACKset = new event();
@@ -109,7 +110,7 @@ int main()
 	cout << endl;
 
 	//vector of vectors, with each list representing a server
-	vector< vector<event*> > SERV (NUMSERV);
+	vector< vector<event*> > SERV;
 
 	vector<int> backoff; //list of backoff counts per server
 	vector<int> attempts; //list of send attempts per server
@@ -128,7 +129,7 @@ int main()
 	for (int k = 0; k<NUMSERV; k++)
 	{
 		vector<event*> HOSTNUM; //empty row
-		for (int i = 0;i<4;i++)
+		for (int i = 0;i<10;i++)
 		{
 			if (i == 0)
 			{
@@ -142,7 +143,11 @@ int main()
 			curEvent->target = target(NUMSERV);
 			curEvent->pktsize = negexpdistPKT(lambda);
 
-			HOSTNUM.push_back(curEvent); //add element to the row
+			generator = curEvent;
+
+			HOSTNUM.push_back(generator); //add element to the row
+
+			curEvent = new event();
 		}//end packet generation for
 		SERV.push_back(HOSTNUM);
 	} //end NUMSERV for
@@ -155,30 +160,37 @@ int main()
 		int mindepartindex = 0;
 		event* minpacket = new event();
 
-		//test
-		cout << SERV[1][1]->depart;
-
 		for (int k = 0; k < NUMSERV; k++)
 		{
-			if (SERV[k][0]->depart == 0)
+			if (SERV[k].size() != 0)
 			{
-				SERV[k][0]->depart = SERV[k][0]->arrival + negexpdist(mew);
-			}
+				if (SERV[k][0]->depart == 0)
+				{
+					SERV[k][0]->depart = SERV[k][0]->arrival + negexpdist(mew);
+				}
 
-			//find first packet ready to go
-			if (mindepart == 0 || mindepart > SERV[k][0]->depart)
-			{
-				mindepart = SERV[k][0]->depart;
-				mindepartindex = k;
-				minpacket = SERV[k][0];
+				//find first packet ready to go
+				if (mindepart == 0 || mindepart > SERV[k][0]->depart)
+				{
+					mindepart = SERV[k][0]->depart;
+					mindepartindex = k;
+					minpacket = SERV[k][0];
+				
+				}
 			}
 		}
 
 		GEL[iterations] = minpacket; //move the packet that is processing into GEL
 
-		SERV[mindepartindex].erase(SERV[mindepartindex].begin()); //pop off packet thats going into link
+		if (SERV[mindepartindex].size() != 0)
+		{
+			SERV[mindepartindex].erase(SERV[mindepartindex].begin()); //pop off packet thats going into link
+		}
 
-		SERV[mindepartindex][0]->depart = SERV[mindepartindex][0]->arrival + negexpdist(mew); //generate processing time for new head
+		if (SERV[mindepartindex].size() != 0)
+		{
+			SERV[mindepartindex][0]->depart = SERV[mindepartindex][0]->arrival + negexpdist(mew); //generate processing time for new head
+		}
 
 		//calculate time in link generate the ack packet if not an ack
 		if (minpacket->type == 's')
@@ -193,12 +205,18 @@ int main()
 		{
 			linktime = (64 * 8) / (11 * 10 ^ 6);
 		}
-
 		
+
+		//DEBUG
+		cout << "iteration: " << iterations << endl;
+		for(int z=0; z<SERV[0].size(); z++)
+		{
+			cout << SERV[0][z]->arrival<< endl;
+		}
 
 
 		//still need to:
-		//fix sort
+		//target cant send itself
 		//see if time in link delays anyone
 		//freeze when waiting for ack
 		//count resend attempts
@@ -206,7 +224,7 @@ int main()
 		//clock
 
 
-	} //end of iterations loop/simulation
+	} //end of iterations for loop/simulation
 
 	system("pause");
 	return 0;
