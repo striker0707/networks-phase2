@@ -73,9 +73,9 @@ int target(int numservers)
 	return (rand() % numservers + 1); 	// return range of 1 to number of hosts
 }
 
-bool sortByDepart(event &lhs, event &rhs) 
+bool sortByDepart(event* lhs, event* rhs) 
 { 
-	return lhs.depart < rhs.depart;
+	return lhs->depart < rhs->depart;
 }
 
 int main()
@@ -109,7 +109,7 @@ int main()
 	cout << endl;
 
 	//vector of vectors, with each list representing a server
-	vector< vector<event*> > SERV (NUMSERV, vector<event*>(100000));
+	vector< vector<event*> > SERV (NUMSERV, vector<event*>(1));
 
 	vector<int> backoff; //list of backoff counts per server
 	vector<int> attempts; //list of send attempts per server
@@ -195,7 +195,7 @@ int main()
 
 
 		//still need to:
-		//fix sort
+		//fix vector
 		//see if time in link delays anyone
 		//freeze when waiting for ack
 		//count resend attempts
