@@ -14,6 +14,7 @@ public:
 	double depart;
 	char type;
 	int target;
+	double pktsize;
 
 	event();
 	event(double, double, int tar);
@@ -26,6 +27,7 @@ event::event()
 	depart = 0;
 	type = 's';
 	target = NULL;
+	pktsize = 0;
 }
 
 event::event(double arrive, double departure, int tar)
@@ -34,6 +36,7 @@ event::event(double arrive, double departure, int tar)
 	depart = departure;
 	type = 's';
 	target = tar;
+	pktsize = 0;
 }
 
 event::event(double arrive, double departure, char a, int tar)
@@ -42,6 +45,7 @@ event::event(double arrive, double departure, char a, int tar)
 	depart = departure;
 	type = 'a'; //ack packet
 	target = tar;
+	pktsize = 64;
 }
 
 double negexpdist(double rate)
@@ -82,15 +86,10 @@ int main()
 	double serverutil = 0;
 	int NUMSERV = 0;
 
-	double Lambda, Mew;
-
 	double linktime = 0;
-	double pktsize = 0;
 
 	double DIFS = 0.0001;
 	double SIFS = 0.00005;
-
-	int queuelengths[100000];
 
 	event* curEvent = new event();
 	event* previousEvent = new event();
@@ -141,6 +140,7 @@ int main()
 			}
 
 			curEvent->target = target(NUMSERV);
+			curEvent->pktsize = negexpdistPKT(lambda);
 
 			HOSTNUM.push_back(curEvent); //add element to the row
 		}//end packet generation for
@@ -180,8 +180,7 @@ int main()
 		//calculate time in link generate the ack packet if not an ack
 		if (minpacket->type == 's')
 		{
-			pktsize = negexpdistPKT(lambda);
-			linktime = (pktsize * 8) / (11 * 10 ^ 6);
+			linktime = (minpacket->pktsize * 8) / (11 * 10 ^ 6);
 			ACK = new event(minpacket->depart + linktime + DIFS, 0, 'a', mindepartindex); // create ack packet
 			ACKset = ACK;
 			SERV[minpacket->target].push_back(ACKset);//put ack packet into target host
@@ -196,6 +195,7 @@ int main()
 
 
 		//still need to:
+		//fix sort
 		//see if time in link delays anyone
 		//freeze when waiting for ack
 		//count resend attempts
