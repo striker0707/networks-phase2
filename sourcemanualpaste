@@ -73,9 +73,9 @@ int target(int numservers)
 	return (rand() % numservers); 	// return range of 1 to number of hosts
 }
 
-bool sortByDepart(event* lhs, event* rhs) 
+bool sortByArrive(event* lhs, event* rhs) 
 { 
-	return lhs->depart < rhs->depart;
+	return lhs->arrival < rhs->arrival;
 }
 
 int main()
@@ -180,6 +180,9 @@ int main()
 			}
 		}
 
+		
+
+
 		GEL[iterations] = minpacket; //move the packet that is processing into GEL
 
 		if (SERV[mindepartindex].size() != 0)
@@ -199,21 +202,20 @@ int main()
 			ACK = new event(minpacket->depart + linktime + DIFS, 0, 'a', mindepartindex); // create ack packet
 			ACKset = ACK;
 			SERV[minpacket->target].push_back(ACKset);//put ack packet into target host
-			sort(SERV[minpacket->target].begin(),SERV[minpacket->target].end(), sortByDepart);//sort the ack into the host
+			sort(SERV[minpacket->target].begin(),SERV[minpacket->target].end(), sortByArrive);//sort the ack into the host
 		}
 		else //ack packet - no need to generate ack packet
 		{
 			linktime = (64 * 8) / (11 * 10 ^ 6);
 		}
 		
-
 		//DEBUG
 		cout << "iteration: " << iterations << endl;
 		for(int z=0; z<SERV[0].size(); z++)
 		{
-			cout << SERV[0][z]->arrival<< endl;
+			cout << SERV[0][z]->arrival<< " " << SERV[0][z]->type <<endl;
 		}
-
+	
 
 		//still need to:
 		//target cant send itself
