@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <vector>
-
+#include <algorithm>
 
 
 using namespace std;
@@ -64,10 +64,14 @@ double negexpdistPKT(double rate)
 	return ceil(v);
 }
 
-
 int target(int numservers)
 {
 	return (rand() % numservers + 1); 	// return range of 1 to number of hosts
+}
+
+bool sortByDepart(event &lhs, event &rhs) 
+{ 
+	return lhs.depart < rhs.depart;
 }
 
 int main()
@@ -80,6 +84,7 @@ int main()
 
 	double Lambda, Mew;
 
+	double linktime = 0;
 	double pktsize = 0;
 
 	double DIFS = 0.0001;
@@ -89,6 +94,8 @@ int main()
 
 	event* curEvent = new event();
 	event* previousEvent = new event();
+	event* ACK = new event();
+	event* ACKset = new event();
 
 	cout << "lamda: ";
 	cin >> lambda;
@@ -133,6 +140,8 @@ int main()
 				curEvent->arrival = (SERV[k][i-1])->arrival + negexpdist(lambda);
 			}
 
+			curEvent->target = target(NUMSERV);
+
 			HOSTNUM.push_back(curEvent); //add element to the row
 		}//end packet generation for
 		SERV.push_back(HOSTNUM);
@@ -168,8 +177,30 @@ int main()
 
 		SERV[mindepartindex][0]->depart = SERV[mindepartindex][0]->arrival + negexpdist(mew); //generate processing time for new head
 
-		pktsize = negexpdistPKT(lambda);
+		//calculate time in link generate the ack packet if not an ack
+		if (minpacket->type == 's')
+		{
+			pktsize = negexpdistPKT(lambda);
+			linktime = (pktsize * 8) / (11 * 10 ^ 6);
+			ACK = new event(minpacket->depart + linktime + DIFS, 0, 'a', mindepartindex); // create ack packet
+			ACKset = ACK;
+			SERV[minpacket->target].push_back(ACKset);//put ack packet into target host
+			sort(SERV[minpacket->target].begin(),SERV[minpacket->target].end(), sortByDepart);//sort the ack into the host
+		}
+		else //ack packet - no need to generate ack packet
+		{
+			linktime = (64 * 8) / (11 * 10 ^ 6);
+		}
 
+		
+
+
+		//still need to:
+		//see if time in link delays anyone
+		//freeze when waiting for ack
+		//count resend attempts
+		//countdown timer
+		//clock
 
 
 	} //end of iterations loop/simulation
