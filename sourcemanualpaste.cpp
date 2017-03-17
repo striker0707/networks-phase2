@@ -73,7 +73,7 @@ int target(int numservers)
 	return (rand() % numservers); 	// return range of 1 to number of hosts
 }
 
-int backofftimer()
+int backofftimergen()
 {
 	return (rand() % 5 + 1); 	// arbitrary random countdown range (eg 1-5)
 }
@@ -167,7 +167,7 @@ int main()
 
 
 	//LOOP WILL START HERE TO SIMULATE PROCESS
-
+	//********************************************************************************
 	for (int iterations = 0; iterations < 10000; iterations++)
 	{
 		//generate departure times of heads and find earliest (min) packet ready to go
@@ -180,9 +180,10 @@ int main()
 		{
 			if (SERV[k].size() != 0)
 			{
+				//generate departure time
 				if (SERV[k][0]->depart == 0)
 				{
-					SERV[k][0]->depart = SERV[k][0]->arrival + negexpdist(mew);
+					SERV[k][0]->depart = SERV[k][0]->arrival + negexpdist(mew) + backoff[k];
 				}
 
 				//find first packet ready to go
@@ -199,6 +200,16 @@ int main()
 		}
 
 		GEL[iterations] = minpacket; //move the packet that is processing into GEL
+		
+		//subtract all timers by the timer of the first ready to go and push back those ready to go times
+		for (int a = 0; a<NUMSERV; a++)
+		{
+			if (SERV[a][0]->depart < GEL[iterations]->depart + linktime)
+			{
+				backoff[a]= backoff[a] - backoff[mindepartindex];
+				SERV[a][0]->depart = GEL[iterations]->depart + linktime - SERV[a][0]->depart;
+			}
+		}
 
 		//FREEZE STUFF
 		//generate freeze timer while waiting for ack
@@ -268,7 +279,11 @@ int main()
 		{
 			if (SERV[a][0]->depart < GEL[iterations]->depart + linktime)
 			{
-				SERV[a][0]->depart = GEL[iterations]->depart + linktime - SERV[a][0]->depart + backofftimer();
+				if (backoff[a] == 0) //only generate new backoff timer if it was clear
+				{
+					backoff[a] = backofftimergen();
+				}
+				SERV[a][0]->depart = GEL[iterations]->depart + linktime - SERV[a][0]->depart;
 			}
 		}
 
@@ -293,7 +308,7 @@ int main()
 //+pop off earliest ready to go and calculate new host head ready to go
 //+if: s packet
 //+then: freeze host and generate ack
-//+push back new host head ready to go by frozen timer
+//+push back new host head ready to go by 5ms
 //+generate link time
 //+push back all ready to go timers by overlap with linktime then set backoff counters
 //find first ready to go by calculating when backoff timer ends + ready to go time
@@ -305,5 +320,32 @@ int main()
 //		if: ack ready to go + link time > target host head
 //		then: target host head = target host head + new freeze timer and send counter++
 //
-//
+//**USING ALG 2 ATM*
+//ALG 2
+//+have list of arrival times
+//+generate processing time (ready to go) of each host (depart = ready to go, not actual departure time)
+//--loop here--
+//+find earliest ready to go
+//	+find first ready to go by calculating when backoff timer ends + ready to go time
+//	+subtract all timers by the timer of the first ready to go and push back those ready to go times
+//	if: ready to go is ack and set unfreeze
+//		if: ack ready to go + link time < target host head
+//		then: ack ready to go = ack ready to go + link time
+//		while send counter <3
+//			if: ack ready to go + link time > target host head
+//			then: target host head = target host head + new freeze timer and send counter++
+//+pop off earliest ready to go and calculate new host head ready to go
+//+if: s packet
+//+then: freeze host and generate ack
+//+push back new host head ready to go by 5ms
+//+generate link time
+//+push back all ready to go timers by overlap with linktime then set backoff counters
+//find first ready to go by calculating when backoff timer ends + ready to go time
+//subtract all timers by the timer of the first ready to go and push back those ready to go times
+//if: ready to go is ack and set unfreeze
+//	if: ack ready to go + link time < target host head
+//	then: ack ready to go = ack ready to go + link time
+//	while send counter <3
+//		if: ack ready to go + link time > target host head
+//		then: target host head = target host head + new freeze timer and send counter++
 //
