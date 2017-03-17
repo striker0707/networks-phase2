@@ -115,14 +115,14 @@ int main()
 	cout << endl;
 
 	//vector of vectors, with each list representing a server
-	vector< vector<event*> > SERV;
+	vector< vector<event*> > SERV (NUMSERV, vector<event*> (100000));
 
 	vector<int> isfrozen(NUMSERV, 0); //maintain frozen status if waiting for ack
 	vector<int> backoff(NUMSERV, 0); //list of backoff counts per server
 	vector<int> attempts(NUMSERV, 0); //list of send attempts per server
 	vector<int> prevlinktime(1, 0); //store duration of time in link of prev processed packet
 
-	event* GEL[100000];
+	vector<event*> GEL;
 
 	//initialize both lists with all 0's
 	for (int j = 0; j<NUMSERV; j++)
@@ -133,9 +133,41 @@ int main()
 
 
 	//populate all servers with events
+	//for (int k = 0; k<NUMSERV; k++)
+	//{
+	//	vector<event*> HOSTNUM; //empty row
+	//	for (int i = 0;i<100000;i++)
+	//	{
+	//		if (i == 0)
+	//		{
+	//			curEvent->arrival = negexpdist(lambda);
+	//			curEvent->depart = negexpdist(mew);
+	//		}
+	//		else
+	//		{
+	//			curEvent->arrival = (HOSTNUM[i - 1])->arrival + negexpdist(lambda);
+	//			curEvent->depart = negexpdist(mew);
+	//		}
+
+	//		curEvent->target = target(NUMSERV);
+
+	//		//prevent server from targeting itself -- DANGEROUS because prevents 1 server testing to debug, comment out to debug 1 server
+	//		while (curEvent->target == k)
+	//			curEvent->target = target(NUMSERV);
+
+	//		curEvent->pktsize = negexpdistPKT(0.001); //used 0.001 to generate more realistic packet sizes
+
+	//		generator = curEvent;
+
+	//		HOSTNUM.push_back(generator); //add element to the row
+
+	//		curEvent = new event();
+	//	}//end packet generation for
+	//	SERV.push_back(HOSTNUM);
+	//} //end NUMSERV for
+	
 	for (int k = 0; k<NUMSERV; k++)
 	{
-		vector<event*> HOSTNUM; //empty row
 		for (int i = 0;i<100000;i++)
 		{
 			if (i == 0)
@@ -145,7 +177,7 @@ int main()
 			}
 			else
 			{
-				curEvent->arrival = (HOSTNUM[i - 1])->arrival + negexpdist(lambda);
+				curEvent->arrival = SERV[k][i-1]->arrival + negexpdist(lambda);
 				curEvent->depart = negexpdist(mew);
 			}
 
@@ -156,22 +188,20 @@ int main()
 				curEvent->target = target(NUMSERV);
 
 			curEvent->pktsize = negexpdistPKT(0.001); //used 0.001 to generate more realistic packet sizes
-
-			generator = curEvent;
-
-			HOSTNUM.push_back(generator); //add element to the row
+			SERV[k][i] = curEvent;
 
 			curEvent = new event();
 		}//end packet generation for
-		SERV.push_back(HOSTNUM);
 	} //end NUMSERV for
-
-
 
 	  //LOOP WILL START HERE TO SIMULATE PROCESS
 	  //********************************************************************************
-	for (int iterations = 0; iterations < 20; iterations++)
+	for (int iterations = 0; iterations < 10000; iterations++)
 	{
+		//debug
+		//cout << "ITERATION : " << iterations << endl;
+
+
 		//generate departure times of heads and find earliest (min) packet ready to go
 		double mindepart = 0;
 		int mindepartindex = 0;
@@ -191,17 +221,18 @@ int main()
 				//find first packet ready to go
 				if (mindepart == 0 || mindepart > SERV[k][0]->depart)
 				{
-					if (isfrozen[k] == 0)
-					{
+					/*if (isfrozen[k] == 0)
+					{*/
 						mindepart = SERV[k][0]->depart;
 						mindepartindex = k;
 						minpacket = SERV[k][0];
-					}
+					//}
 				}
 			}
 		}
 
-		
+		//debug
+		//cout << "minpacketarrival " << minpacket->arrival << endl;
 		
 
 		linktime = (minpacket->pktsize * 8) / (11 * 10 ^ 6) + DIFS;
@@ -211,6 +242,8 @@ int main()
 		{
 			SERV[mindepartindex].erase(SERV[mindepartindex].begin()); //pop off packet thats going into link
 		}
+		//debug
+		//cout << "HEAD CHECK" << "1: " << SERV[0][0]->arrival << " 2:" << SERV[1][0]->arrival <<" 3:" << SERV[2][0]->arrival << " 4:" << SERV[3][0]->arrival << endl;
 
 
 		int backofftimehold = backoff[mindepartindex];
@@ -247,10 +280,10 @@ int main()
 			}
 		}
 
-		GEL[iterations] = minpacket; //move the packet that is processing into GEL
+		GEL.push_back(minpacket); //move the packet that is processing into GEL
 
 		//DEBUG
-		cout << "Arrival: " << GEL[iterations]->arrival << "   Depart: "<< GEL[iterations]->depart << "    Type: " << GEL[iterations]->type << endl;
+		//cout << "GEL - Arrival: " << GEL[iterations]->arrival << "   Depart: "<< GEL[iterations]->depart << "    Type: " << GEL[iterations]->type << endl;
 
 
 		//FREEZE STUFF
@@ -326,16 +359,22 @@ int main()
 			}
 		}
 		//DEBUG
-			for (int a =0; a < NUMSERV; a ++)
-	{
-				cout << "DEBUG" << endl;
-				cout << SERV[a][0]->depart << endl;
-	}
+		//cout << "MINPACKET - Arrival: " << minpacket->arrival << "   Depart: "<< minpacket->depart << "    Type: " << minpacket->type << endl;
  
 	} //end of iterations for setting up GEL
 
 
 	//DEBUG
+
+	double totalpacketsize =0;
+	double throughput = 0;
+	for (int ind = 0; ind < GEL.size(); ind++)
+	{
+		totalpacketsize = totalpacketsize + GEL[ind]->pktsize;
+	}
+	throughput= (totalpacketsize / GEL.back()->depart) * 100000;
+	cout << throughput;
+
 
 	system("pause");
 	return 0;
