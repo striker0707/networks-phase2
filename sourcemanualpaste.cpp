@@ -136,15 +136,17 @@ int main()
 	for (int k = 0; k<NUMSERV; k++)
 	{
 		vector<event*> HOSTNUM; //empty row
-		for (int i = 0;i<50000;i++)
+		for (int i = 0;i<100;i++)
 		{
 			if (i == 0)
 			{
 				curEvent->arrival = negexpdist(lambda);
+				curEvent->depart = negexpdist(mew);
 			}
 			else
 			{
 				curEvent->arrival = (HOSTNUM[i - 1])->arrival + negexpdist(lambda);
+				curEvent->depart = negexpdist(mew);
 			}
 
 			curEvent->target = target(NUMSERV);
@@ -168,7 +170,7 @@ int main()
 
 	  //LOOP WILL START HERE TO SIMULATE PROCESS
 	  //********************************************************************************
-	for (int iterations = 0; iterations < 100000; iterations++)
+	for (int iterations = 0; iterations < 10; iterations++)
 	{
 		//generate departure times of heads and find earliest (min) packet ready to go
 		double mindepart = 0;
@@ -181,10 +183,10 @@ int main()
 			if (SERV[k].size() != 0)
 			{
 				//generate departure time
-				if (SERV[k][0]->depart == 0)
-				{
-					SERV[k][0]->depart = SERV[k][0]->arrival + negexpdist(mew) + backoff[k];
-				}
+				/*if (SERV[k][0]->depart == 0)
+				{*/
+					SERV[k][0]->depart = SERV[k][0]->arrival + SERV[k][0]->depart + backoff[k];
+				//}
 
 				//find first packet ready to go
 				if (mindepart == 0 || mindepart > SERV[k][0]->depart)
@@ -199,25 +201,33 @@ int main()
 			}
 		}
 
-		GEL[iterations] = minpacket; //move the packet that is processing into GEL
+		
+		
 
 		linktime = (minpacket->pktsize * 8) / (11 * 10 ^ 6) + DIFS;
+
+		//pop the earliest one off front of host vector
+		if (SERV[mindepartindex].size() != 0 )
+		{
+			SERV[mindepartindex].erase(SERV[mindepartindex].begin()); //pop off packet thats going into link
+		}
+
 
 		int backofftimehold = backoff[mindepartindex];
 		//subtract all timers by the timer of the first ready to go and push back those ready to go times
 		for (int a = 0; a<NUMSERV; a++)
 		{
-			if (SERV[a][0]->depart < GEL[iterations]->depart + linktime)
+			if (SERV[a][0]->depart < minpacket->depart + linktime)
 			{
 				backoff[a] = backoff[a] - backofftimehold; //push earliest timer to 0 and decrement other backoffs accordingly
-				SERV[a][0]->depart = GEL[iterations]->depart + linktime - SERV[a][0]->depart + backoff[a]; //delay by appropriate backoff
+				SERV[a][0]->depart = minpacket->depart + linktime - SERV[a][0]->depart + backoff[a]; //delay by appropriate backoff
 			}
 		}
 
 		//count send block
 		if (minpacket->type == 'a')
 		{
-			isfrozen[mindepartindex] = 0;
+			isfrozen[minpacket->target] = 0;
 
 			if(minpacket->depart + linktime <  SERV[minpacket->target][0]->depart)
 			{
@@ -226,14 +236,21 @@ int main()
 
 			if(minpacket->depart + linktime >=  SERV[minpacket->target][0]->depart)
 			{
-				while (attempts[mindepartindex] <=3)
+				if (attempts[minpacket->target] <=3)
 				{
 					SERV[minpacket->target][0]->depart=SERV[minpacket->target][0]->depart+500; //5ms
-					attempts[mindepartindex] = attempts[mindepartindex] + 1;
+					attempts[minpacket->target] = attempts[minpacket->target] + 1;
+					isfrozen[minpacket->target] = 1;
 				}
+				else
+					isfrozen[minpacket->target] = 0;
 			}
 		}
 
+		GEL[iterations] = minpacket; //move the packet that is processing into GEL
+
+		//DEBUG
+		cout << "Arrival: " << GEL[iterations]->arrival << "   Depart: "<< GEL[iterations]->depart << "    Type: " << GEL[iterations]->type << endl;
 
 
 		//FREEZE STUFF
@@ -253,10 +270,10 @@ int main()
 
 
 		//may need to prevent pop if waiting for ack not sure if alg covers it already or not
-		if (SERV[mindepartindex].size() != 0 && isfrozen[mindepartindex])
-		{
-			SERV[mindepartindex].erase(SERV[mindepartindex].begin()); //pop off packet thats going into link
-		}
+		//if (SERV[mindepartindex].size() != 0 )
+		//{
+		//	SERV[mindepartindex].erase(SERV[mindepartindex].begin()); //pop off packet thats going into link
+		//}
 
 		if (SERV[mindepartindex].size() != 0)
 		{
@@ -272,6 +289,8 @@ int main()
 		{
 			
 			ACK = new event(minpacket->depart + linktime, 0, 'a', mindepartindex); // create ack packet
+
+
 			ACKset = ACK;
 
 			//SERV[minpacket->target].push_back(ACKset);//put ack packet into target host
@@ -290,10 +309,6 @@ int main()
 			SERV[minpacket->target].insert(SERV[minpacket->target].begin() + searchminindex, ACKset);
 
 		}
-		else //ack packet - no need to generate ack packet
-		{
-			linktime = (64 * 8) / (11 * 10 ^ 6) + SIFS;
-		}
 
 
 		//push back all ready to go timers by overlap with linktime then set backoff counters
@@ -306,15 +321,15 @@ int main()
 					backoff[a] = backofftimergen();
 				}
 				SERV[a][0]->depart = GEL[iterations]->depart + linktime - SERV[a][0]->depart;
+
+				
 			}
 		}
-
-
-
-
+ 
 	} //end of iterations for setting up GEL
 
 
+	//DEBUG
 
 	system("pause");
 	return 0;
