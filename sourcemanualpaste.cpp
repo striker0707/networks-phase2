@@ -368,13 +368,20 @@ int main()
 
 	double totalpacketsize =0;
 	double throughput = 0;
+	double totaldelay = 0;
 	for (int ind = 0; ind < GEL.size(); ind++)
 	{
 		totalpacketsize = totalpacketsize + GEL[ind]->pktsize;
 	}
 	throughput= (totalpacketsize / GEL.back()->depart) * 100000;
-	cout << throughput;
+	cout << "throughput" << throughput << endl;
 
+	for (int ind = 0; ind < GEL.size(); ind++)
+	{
+		totaldelay = (GEL[ind]->depart - GEL[ind]->arrival)/100000 + totaldelay;
+	}
+
+	cout << "avg delay" << totaldelay/11000000<< endl;
 
 	system("pause");
 	return 0;
