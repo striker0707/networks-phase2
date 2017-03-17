@@ -52,7 +52,7 @@ double negexpdist(double rate)
 {
 	double u;
 	u = (rand() / (RAND_MAX + 1.0)); //drand48() not happy in visual studio, this equation models drand48()
-	return (ceil(((-1.0 / rate)*log(1.0 - u))*100000)); //working in units of 0.01ms
+	return (ceil(((-1.0 / rate)*log(1.0 - u)) * 100000)); //working in units of 0.01ms
 }
 
 double negexpdistPKT(double rate)
@@ -62,8 +62,8 @@ double negexpdistPKT(double rate)
 
 	while (v > 1544)
 	{
-	u = (rand() / (RAND_MAX + 1.0)); //drand48() not happy in visual studio, this equation models drand48()
-	v = ((-1.0 / rate)*log(1.0 - u));
+		u = (rand() / (RAND_MAX + 1.0)); //drand48() not happy in visual studio, this equation models drand48()
+		v = ((-1.0 / rate)*log(1.0 - u));
 	}
 	return ceil(v);
 }
@@ -78,8 +78,8 @@ int backofftimergen()
 	return (rand() % 5 + 1); 	// arbitrary random countdown range (eg 1-5)
 }
 
-bool sortByArrive(event* lhs, event* rhs) 
-{ 
+bool sortByArrive(event* lhs, event* rhs)
+{
 	return lhs->arrival < rhs->arrival;
 }
 
@@ -97,7 +97,7 @@ int main()
 	double SIFS = 5;
 
 	event* curEvent = new event();
-	event* generator = new event ();
+	event* generator = new event();
 	event* previousEvent = new event();
 	event* ACK = new event();
 	event* ACKset = new event();
@@ -117,10 +117,10 @@ int main()
 	//vector of vectors, with each list representing a server
 	vector< vector<event*> > SERV;
 
-	vector<int> isfrozen (NUMSERV, 0); //maintain frozen status if waiting for ack
-	vector<int> backoff (NUMSERV, 0); //list of backoff counts per server
-	vector<int> attempts (NUMSERV, 0); //list of send attempts per server
-	vector<int> prevlinktime (1, 0); //store duration of time in link of prev processed packet
+	vector<int> isfrozen(NUMSERV, 0); //maintain frozen status if waiting for ack
+	vector<int> backoff(NUMSERV, 0); //list of backoff counts per server
+	vector<int> attempts(NUMSERV, 0); //list of send attempts per server
+	vector<int> prevlinktime(1, 0); //store duration of time in link of prev processed packet
 
 	event* GEL[100000];
 
@@ -144,7 +144,7 @@ int main()
 			}
 			else
 			{
-				curEvent->arrival = (HOSTNUM[i-1])->arrival + negexpdist(lambda);
+				curEvent->arrival = (HOSTNUM[i - 1])->arrival + negexpdist(lambda);
 			}
 
 			curEvent->target = target(NUMSERV);
@@ -163,12 +163,12 @@ int main()
 		}//end packet generation for
 		SERV.push_back(HOSTNUM);
 	} //end NUMSERV for
-	
 
 
-	//LOOP WILL START HERE TO SIMULATE PROCESS
-	//********************************************************************************
-	for (int iterations = 0; iterations < 10000; iterations++)
+
+	  //LOOP WILL START HERE TO SIMULATE PROCESS
+	  //********************************************************************************
+	for (int iterations = 0; iterations < 100000; iterations++)
 	{
 		//generate departure times of heads and find earliest (min) packet ready to go
 		double mindepart = 0;
@@ -189,7 +189,7 @@ int main()
 				//find first packet ready to go
 				if (mindepart == 0 || mindepart > SERV[k][0]->depart)
 				{
-					if(isfrozen[k] == 0)
+					if (isfrozen[k] == 0)
 					{
 						mindepart = SERV[k][0]->depart;
 						mindepartindex = k;
@@ -200,19 +200,22 @@ int main()
 		}
 
 		GEL[iterations] = minpacket; //move the packet that is processing into GEL
-		
+
+
+		//****fixing here
+		int backofftimehold = backoff[mindepartindex];
 		//subtract all timers by the timer of the first ready to go and push back those ready to go times
 		for (int a = 0; a<NUMSERV; a++)
 		{
 			if (SERV[a][0]->depart < GEL[iterations]->depart + linktime)
 			{
-				backoff[a]= backoff[a] - backoff[mindepartindex];
-				SERV[a][0]->depart = GEL[iterations]->depart + linktime - SERV[a][0]->depart;
+				backoff[a] = backoff[a] - backofftimehold;
+				SERV[a][0]->depart = GEL[iterations]->depart + linktime - SERV[a][0]->depart + backoff[a];
 			}
 		}
 
 		//FREEZE STUFF
-		//generate freeze timer while waiting for ack
+		//set freeze flag if waiting for ack
 		if (GEL[iterations]->type == 's')
 		{
 			isfrozen[mindepartindex] = 1;
@@ -223,10 +226,10 @@ int main()
 		}
 
 		//DEBUG
-	/*	cout << "iteration: " << iterations << endl;
+		/*	cout << "iteration: " << iterations << endl;
 		for(int z=0; z<SERV[0].size(); z++)
 		{
-			cout << SERV[0][z]->arrival<< " " << SERV[0][z]->type << SERV[0][z]->depart << endl;
+		cout << SERV[0][z]->arrival<< " " << SERV[0][z]->type << SERV[0][z]->depart << endl;
 		}*/
 
 
@@ -239,11 +242,11 @@ int main()
 		if (SERV[mindepartindex].size() != 0)
 		{
 			SERV[mindepartindex][0]->depart = SERV[mindepartindex][0]->arrival + negexpdist(mew) + 500; //generate processing time for new head
-			//the 500 is the 5ms freeze timer
+																										//the 500 is the 5ms freeze timer
 		}
 
-		
-	
+
+
 
 		//calculate time in link -> generate the ack packet if not an ack
 		if (minpacket->type == 's')
@@ -251,7 +254,7 @@ int main()
 			linktime = (minpacket->pktsize * 8) / (11 * 10 ^ 6) + DIFS;
 			ACK = new event(minpacket->depart + linktime, 0, 'a', mindepartindex); // create ack packet
 			ACKset = ACK;
-			
+
 			//SERV[minpacket->target].push_back(ACKset);//put ack packet into target host
 			//sort(SERV[minpacket->target].begin(),SERV[minpacket->target].end(), sortByArrive);//sort the ack into the host
 
@@ -261,7 +264,7 @@ int main()
 
 			while (searchmin > SERV[minpacket->target][searchminindex]->arrival)
 			{
-					searchminindex = searchminindex++;
+				searchminindex = searchminindex++;
 			}
 			//insert faster than sort
 
@@ -272,7 +275,7 @@ int main()
 		{
 			linktime = (64 * 8) / (11 * 10 ^ 6) + SIFS;
 		}
-		
+
 
 		//push back all ready to go timers by overlap with linktime then set backoff counters
 		for (int a = 0; a<NUMSERV; a++)
