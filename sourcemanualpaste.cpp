@@ -209,8 +209,7 @@ int main()
 		{
 			if (SERV[a][0]->depart < GEL[iterations]->depart + linktime)
 			{
-				backoff[a] = backoff[a] - backofftimehold;
-				SERV[a][0]->depart = GEL[iterations]->depart + linktime - SERV[a][0]->depart + backoff[a];
+				SERV[a][0]->depart = GEL[iterations]->depart + linktime - SERV[a][0]->depart + backoff[a]; //delay by backoff timer (best case)
 			}
 		}
 
