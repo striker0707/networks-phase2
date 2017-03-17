@@ -136,7 +136,7 @@ int main()
 	for (int k = 0; k<NUMSERV; k++)
 	{
 		vector<event*> HOSTNUM; //empty row
-		for (int i = 0;i<100;i++)
+		for (int i = 0;i<100000;i++)
 		{
 			if (i == 0)
 			{
@@ -170,7 +170,7 @@ int main()
 
 	  //LOOP WILL START HERE TO SIMULATE PROCESS
 	  //********************************************************************************
-	for (int iterations = 0; iterations < 10; iterations++)
+	for (int iterations = 0; iterations < 20; iterations++)
 	{
 		//generate departure times of heads and find earliest (min) packet ready to go
 		double mindepart = 0;
@@ -325,6 +325,12 @@ int main()
 				
 			}
 		}
+		//DEBUG
+			for (int a =0; a < NUMSERV; a ++)
+	{
+				cout << "DEBUG" << endl;
+				cout << SERV[a][0]->depart << endl;
+	}
  
 	} //end of iterations for setting up GEL
 
