@@ -1,0 +1,22 @@
++have list of arrival times
++generate processing time (ready to go) of each host (depart = ready to go, not actual departure time)
+
+__loop here__
++find earliest ready to go
++pop off earliest ready to go and calculate new host head ready to go
++if: s packet
++then: freeze host and generate ack
++push back new host head ready to go by frozen timer
++generate link time
++push back all ready to go timers by overlap with linktime then set backoff counters
+
+find first ready to go by calculating when backoff timer ends + ready to go time
+subtract all timers by the timer of the first ready to go and push back those ready to go times
+if: ready to go is ack and set unfreeze
+	if: ack ready to go + link time < target host head
+	then: ack ready to go = ack ready to go + link time
+	while send counter <3
+		if: ack ready to go + link time > target host head
+		then: target host head = target host head + new freeze timer and send counter++
+
+
