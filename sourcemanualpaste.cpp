@@ -253,7 +253,7 @@ int main()
 
 
 		//may need to prevent pop if waiting for ack not sure if alg covers it already or not
-		if (SERV[mindepartindex].size() != 0)
+		if (SERV[mindepartindex].size() != 0 && isfrozen[mindepartindex])
 		{
 			SERV[mindepartindex].erase(SERV[mindepartindex].begin()); //pop off packet thats going into link
 		}
@@ -322,19 +322,20 @@ int main()
 
 
 //ALGORITHM
+//
 //+have list of arrival times
 //+generate processing time (ready to go) of each host (depart = ready to go, not actual departure time)
-
+//
 //__loop here__
 //find earliest ready to go
 //	+find first ready to go by calculating when backoff timer ends + ready to go time
 //	+subtract all timers by the timer of the first ready to go and push back those ready to go times
 //	+if: ready to go is ack and set unfreeze
-//		+if: ack ready to go + link time < target host head
-//		+then: target host head= ack ready to go + link time
-//		+if: ack ready to go + link time > target host head
-//			+while send counter <3
-//			+then: target host head = target host head + new freeze timer and send counter++
+//		if: ack ready to go + link time < target host head
+//		then: target host head= ack ready to go + link time
+//		if: ack ready to go + link time > target host head
+//			while send counter <3
+//			then: target host head = target host head + new freeze timer and send counter++
 //
 //+pop off earliest ready to go and calculate new host head ready to go
 //+if: s packet
@@ -342,4 +343,4 @@ int main()
 //+push back new host head ready to go by 5ms
 //+generate link time
 //+push back all ready to go timers by overlap with linktime then set backoff counters
-
+//
